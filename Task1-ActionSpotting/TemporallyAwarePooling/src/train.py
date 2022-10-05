@@ -68,7 +68,7 @@ def trainer(train_loader,
                 model_name)
 
             logging.info("Validation performance at epoch " +
-                         str(epoch+1) + " -> " + str(performance_validation))
+                         str(epoch+1) + " -> " + str(round(performance_validation, 3)))
 
         # Reduce LR on Plateau after patience reached
         prevLR = optimizer.param_groups[0]['lr']
@@ -104,8 +104,10 @@ def train(dataloader,
         model.eval()
 
     end = time.time()
+
     with tqdm(enumerate(dataloader), total=len(dataloader)) as t:
         for i, (feats, labels) in t:
+            # return 0
             # measure data loading time
             data_time.update(time.time() - end)
             feats = feats.cuda()
@@ -180,6 +182,11 @@ def test(dataloader, model, model_name):
             t.set_description(desc)
 
     AP = []
+
+    print(np.any(np.isnan(all_outputs)))
+    print(np.any(np.isfinite(all_outputs)))
+    # print(all_output(outro)
+
     for i in range(1, dataloader.dataset.num_classes+1):
         AP.append(average_precision_score(np.concatenate(all_labels)
                                           [:, i], np.concatenate(all_outputs)[:, i]))
@@ -269,7 +276,6 @@ def testSpotting(dataloader, model, model_name, overwrite=True, NMS_window=30, N
                 t.set_description(desc)
 
 
-
                 def get_spot_from_NMS(Input, window=60, thresh=0.0):
 
                     detections_tmp = np.copy(Input)
@@ -297,6 +303,7 @@ def testSpotting(dataloader, model, model_name, overwrite=True, NMS_window=30, N
                 json_data["UrlLocal"] = game_ID
                 json_data["predictions"] = list()
 
+                # erro parece ser aqui
                 for half, timestamp in enumerate([timestamp_long_half_1, timestamp_long_half_2]):
                     for l in range(dataloader.dataset.num_classes):
                         spots = get_spot(
@@ -349,5 +356,5 @@ def testSpotting(dataloader, model, model_name, overwrite=True, NMS_window=30, N
                  split="test",
                  prediction_file="results_spotting.json", 
                  version=dataloader.dataset.version)
-
+    print(results)
     return results

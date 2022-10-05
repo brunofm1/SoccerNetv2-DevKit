@@ -2,6 +2,7 @@ from torch.utils.data import Dataset
 
 import numpy as np
 import random
+from random import sample
 import os
 import time
 
@@ -69,6 +70,12 @@ class SoccerNetClips(Dataset):
         self.game_labels = list()
 
         # game_counter = 0
+        # print(len(self.listGames))
+        # print(type(self.listGames))
+        # Para viabilizar o consumo de memória RAM
+        # foi preciso reduzir o tamanho da lista de games
+        from random import sample
+        self.listGames = sample(self.listGames, 10)
         for game in tqdm(self.listGames):
             # Load features
             feat_half1 = np.load(os.path.join(self.path, game, "1_" + self.features))
@@ -123,6 +130,14 @@ class SoccerNetClips(Dataset):
                     label_half2[frame//self.window_size_frame][0] = 0 # not BG anymore
                     label_half2[frame//self.window_size_frame][label+1] = 1 # that's my class
             
+                # print('inside for in original dataset __init__')
+                # print(feat_half1.shape)
+                # print(feat_half2.shape)
+                # print(label_half1.shape)
+                # print(label_half2.shape)
+
+
+            # aqui que quebra por falta de memória
             self.game_feats.append(feat_half1)
             self.game_feats.append(feat_half2)
             self.game_labels.append(label_half1)
@@ -142,6 +157,8 @@ class SoccerNetClips(Dataset):
             clip_labels (np.array): clip of labels for the segmentation.
             clip_targets (np.array): clip of targets for the spotting.
         """
+        # print('inside getitem in original dataset')
+        print(self.game_feats[index,:,:].shape)
         return self.game_feats[index,:,:], self.game_labels[index,:]
 
     def __len__(self):
@@ -153,6 +170,8 @@ class SoccerNetClipsTesting(Dataset):
                 framerate=2, window_size=15):
         self.path = path
         self.listGames = getListGames(split)
+        # reduzir tamanho 
+        # self.listGames = sample(self.listGames, 1)
         self.features = features
         self.window_size_frame = window_size*framerate
         self.framerate = framerate
