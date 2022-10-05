@@ -7,7 +7,9 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 import torch
 
-from dataset import SoccerNetClips, SoccerNetClipsTesting #,SoccerNetClipsOld
+from dataset import SoccerNetClipsTesting #,SoccerNetClips
+# from dataset import SoccerNetClips
+from dataset_copy import SoccerNetClips
 from model import Model
 from train import trainer, test, testSpotting
 from loss import NLLLoss
@@ -21,10 +23,17 @@ def main(args):
 
     # create dataset
     if not args.test_only:
-        dataset_Train = SoccerNetClips(path=args.SoccerNet_path, features=args.features, split=args.split_train, version=args.version, framerate=args.framerate, window_size=args.window_size)
-        dataset_Valid = SoccerNetClips(path=args.SoccerNet_path, features=args.features, split=args.split_valid, version=args.version, framerate=args.framerate, window_size=args.window_size)
-        dataset_Valid_metric  = SoccerNetClips(path=args.SoccerNet_path, features=args.features, split=args.split_valid, version=args.version, framerate=args.framerate, window_size=args.window_size)
-    dataset_Test  = SoccerNetClipsTesting(path=args.SoccerNet_path, features=args.features, split=args.split_test, version=args.version, framerate=args.framerate, window_size=args.window_size)
+        dataset_Train = SoccerNetClips(path=args.SoccerNet_path, features=args.features,
+         split=args.split_train, version=args.version, framerate=args.framerate,
+          window_size=args.window_size)
+        dataset_Valid = SoccerNetClips(path=args.SoccerNet_path, features=args.features,
+         split=args.split_valid, version=args.version, framerate=args.framerate,
+          window_size=args.window_size)
+        dataset_Valid_metric  = SoccerNetClips(path=args.SoccerNet_path, features=args.features,
+         split=args.split_valid, version=args.version, framerate=args.framerate,
+          window_size=args.window_size)
+    dataset_Test  = SoccerNetClipsTesting(path=args.SoccerNet_path, features=args.features, split=args.split_test,
+     version=args.version, framerate=args.framerate, window_size=args.window_size)
 
     if args.feature_dim is None:
         args.feature_dim = dataset_Test[0][1].shape[-1]
@@ -50,6 +59,7 @@ def main(args):
             batch_size=args.batch_size, shuffle=False,
             num_workers=args.max_num_worker, pin_memory=True)
 
+        # Para que segunda validacao?
         val_metric_loader = torch.utils.data.DataLoader(dataset_Valid_metric,
             batch_size=args.batch_size, shuffle=False,
             num_workers=args.max_num_worker, pin_memory=True)
@@ -72,22 +82,30 @@ def main(args):
                 max_epochs=args.max_epochs, evaluation_frequency=args.evaluation_frequency)
 
     # Free up some RAM memory
-    del dataset_Train, dataset_Valid, dataset_Valid_metric, dataset_Test
-    del train_loader, val_loader, val_metric_loader
+    # if adicionado por mim
+    if not args.test_only:
+        del dataset_Train, dataset_Valid, dataset_Valid_metric
+        del train_loader, val_loader, val_metric_loader
+    del dataset_Test
 
+    # carrega o melhor modelo - no caso da atenção,
+    # não há nenhum modelo salvo
     # For the best model only
     checkpoint = torch.load(os.path.join("models", args.model_name, "model.pth.tar"))
     model.load_state_dict(checkpoint['state_dict'])
 
     # test on multiple splits [test/challenge]
     for split in args.split_test:
-        dataset_Test  = SoccerNetClipsTesting(path=args.SoccerNet_path, features=args.features, split=[split], version=args.version, framerate=args.framerate, window_size=args.window_size)
+        dataset_Test  = SoccerNetClipsTesting(path=args.SoccerNet_path, features=args.features,
+         split=[split], version=args.version, framerate=args.framerate, window_size=args.window_size)
 
         test_loader = torch.utils.data.DataLoader(dataset_Test,
             batch_size=1, shuffle=False,
             num_workers=1, pin_memory=True)
 
-        results = testSpotting(test_loader, model=model, model_name=args.model_name, NMS_window=args.NMS_window, NMS_threshold=args.NMS_threshold)
+        # aqui acontece a inferência
+        results = testSpotting(test_loader, model=model, model_name=args.model_name,
+         NMS_window=args.NMS_window, NMS_threshold=args.NMS_threshold)
         if results is None:
             continue
 
@@ -122,7 +140,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--split_train', nargs='+', default=["train"], help='list of split for training')
     parser.add_argument('--split_valid', nargs='+', default=["valid"], help='list of split for validation')
-    parser.add_argument('--split_test', nargs='+', default=["test", "challenge"], help='list of split for testing')
+    # parser.add_argument('--split_test', nargs='+', default=["test", "challenge"], help='list of split for testing')
+    parser.add_argument('--split_test', nargs='+', default=["test"], help='list of split for testing')
 
     parser.add_argument('--version', required=False, type=int,   default=2,     help='Version of the dataset' )
     parser.add_argument('--feature_dim', required=False, type=int,   default=None,     help='Number of input features' )
